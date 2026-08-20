@@ -86,10 +86,9 @@ lsp:
 ```bash
 cd scratch-lsp-plugin && npx tsc --noEmit      # 类型检查
 node scripts/build-client.mjs                  # client bundle 构建（DSH ModuleLoader 格式）
-node m2-check.mjs        # 四工具 TS/Python 无 GUI 验证 9/9
-node m2b-crash-check.mjs # 崩溃重试
-node m3-settings-check.mjs # settings 接线全链路
 ```
+
+各里程碑的验证结论（沙箱 spawn、双向 JSON-RPC、四工具 9/9、崩溃重试、settings 接线全链路）记录在设计文档 [lsp-plugin-design.md](./lsp-plugin-design.md) §11.3；开发期验证脚本依赖本机 DSH 安装，保存在仓库历史中，需要时从 git 历史找回。
 
 ## 里程碑
 

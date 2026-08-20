@@ -1,6 +1,5 @@
 node_modules/
 scratch-lsp-plugin/node_modules/
 scratch-lsp-plugin/lib/client.bundle.js
-m0-fixture/node_modules/
 *.log
 .DS_Store
