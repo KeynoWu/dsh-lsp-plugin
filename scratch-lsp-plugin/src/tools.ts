@@ -313,3 +313,103 @@ export function createDiagnosticsTool(ctx: Context, pool: LspPool, getConfig: ()
     },
   })
 }
+
+// ==================== lsp_rename（M4 写操作） ====================
+
+interface TextEditLike {
+  range: { start: { line: number; character: number }; end: { line: number; character: number } }
+  newText: string
+}
+
+/** 按行/列把 edits 应用到文本（从后往前，避免偏移错乱）。 */
+export function applyTextEdits(text: string, edits: TextEditLike[]): string {
+  if (edits.length === 0) return text
+  const lines = text.split('\n')
+  const lineStarts: number[] = [0]
+  for (let i = 0; i < lines.length; i++) lineStarts.push(lineStarts[i]! + lines[i]!.length + 1)
+  const toOffset = (p: { line: number; character: number }) => lineStarts[p.line]! + p.character
+  const sorted = [...edits].sort((a, b) => toOffset(b.range.start) - toOffset(a.range.start))
+  let out = text
+  for (const e of sorted) {
+    const start = toOffset(e.range.start)
+    const end = toOffset(e.range.end)
+    out = out.slice(0, start) + e.newText + out.slice(end)
+  }
+  return out
+}
+
+/** 应用 WorkspaceEdit（changes 与 documentChanges 的文本 edit 部分）。返回每个被改文件的 uri → 新内容。 */
+export function collectWorkspaceEdits(
+  edit: unknown,
+): { uri: string; edits: TextEditLike[] }[] {
+  const out: { uri: string; edits: TextEditLike[] }[] = []
+  const ws = edit as { changes?: Record<string, TextEditLike[]>; documentChanges?: Array<{ textDocument?: { uri: string }; edits?: TextEditLike[] }> }
+  if (ws.changes) {
+    for (const [uri, edits] of Object.entries(ws.changes)) out.push({ uri, edits })
+  }
+  if (ws.documentChanges) {
+    for (const dc of ws.documentChanges) {
+      if (dc.textDocument?.uri && dc.edits) out.push({ uri: dc.textDocument.uri, edits: dc.edits })
+    }
+  }
+  return out
+}
+
+export function createRenameTool(ctx: Context, pool: LspPool, getConfig: () => LspPluginConfig) {
+  return defineTool({
+    name: 'lsp_rename',
+    description:
+      '重命名符号并应用跨文件 WorkspaceEdit（LSP 语义重命名，含引用同步）。写操作：修改文件，需用户确认。' +
+      '参数 file 为目标文件，line 为 1-based 行号，newName 为新名称。返回修改的文件与编辑数。',
+    parameters: {
+      file: { type: 'string', required: true, description: '目标文件路径（绝对，或相对会话工作区）' },
+      line: { type: 'number', required: true, description: '符号所在行号（1-based）' },
+      symbol: { type: 'string', description: '行内符号名；省略时取首个非空白列' },
+      newName: { type: 'string', required: true, description: '新名称' },
+      timeout: { type: 'number', description: '单次请求超时（秒，默认 20，钳制 5..300）' },
+    },
+    timeoutMs: 30_000,
+    output: { schema: { type: 'string' }, render: (_a, v: string) => [{ type: 'text', text: v }] },
+    async execute(args, exec: ExecLike) {
+      try {
+        const s = await prepare(args, exec, pool, getConfig)
+        const result = await s.client.request('textDocument/rename', {
+          textDocument: { uri: s.uri },
+          position: { line: s.line0, character: s.column0 },
+          newName: args.newName,
+        }, s.timeoutMs)
+        if (result === null || result === undefined) {
+          return `Rename returned no edits for ${args.symbol ?? 'symbol'} at ${s.file}:${args.line ?? s.line0 + 1}`
+        }
+        const changes = collectWorkspaceEdits(result)
+        if (changes.length === 0) return 'Rename produced no file changes'
+
+        // 通过 ctx.fs seam 写文件（沙箱感知 + fs/write-intent 审批钩子）
+        const fs = (ctx as Context & { fs?: {
+          resolve(path: string, opts?: { signal?: AbortSignal }): Promise<{ displayPath: string }>
+          readText(target: { displayPath: string }, signal?: AbortSignal): Promise<string>
+          writeText(target: { displayPath: string }, content: string, intent?: unknown, signal?: AbortSignal, sandboxPolicy?: unknown): Promise<unknown>
+          sandboxMode?: string
+        } }).fs
+        if (!fs) return 'Rename requires the filesystem seam (ctx.fs), unavailable'
+        const sandboxPolicy = ctx.get?.('sandboxPolicy') as unknown | undefined
+
+        const summary: string[] = []
+        for (const { uri, edits } of changes) {
+          const path = decodeURIComponent(uri.replace(/^file:\/\//, ''))
+          const target = await fs.resolve(path, { signal: exec.signal })
+          const before = await fs.readText(target, exec.signal)
+          const after = applyTextEdits(before, edits)
+          if (after === before) continue
+          await fs.writeText(target, after, undefined, exec.signal, sandboxPolicy)
+          const editCount = edits.length
+          summary.push(`  ${target.displayPath} (${editCount} edit${editCount > 1 ? 's' : ''})`)
+        }
+        if (summary.length === 0) return 'Rename produced no text changes (name unchanged?)'
+        return `Renamed ${args.symbol ?? 'symbol'} → ${args.newName}:\n${summary.join('\n')}`
+      } catch (e) {
+        return e instanceof Error ? e.message : String(e)
+      }
+    },
+  })
+}

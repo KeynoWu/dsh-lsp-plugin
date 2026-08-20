@@ -12,11 +12,11 @@ import '@deepseek-ai/dsh-subprocess' // 触发 Context.subprocess 类型增强
 import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
 import { LspPool } from './client.ts'
 import { LspStatusGateway } from '../lib/status.js' // 构建产物（装饰器需转译，见 scripts/build:status）
-import { createDefinitionTool, createHoverTool, createReferencesTool, createDiagnosticsTool, type LspPluginConfig as LspConfig } from './tools.ts'
+import { createDefinitionTool, createHoverTool, createReferencesTool, createDiagnosticsTool, createRenameTool, type LspPluginConfig as LspConfig } from './tools.ts'
 
 export const name = 'dsh-lsp-plugin'
 
-export const inject = ['tools', 'subprocess'] as const
+export const inject = ['tools', 'subprocess', 'fs'] as const
 
 /** 插件配置类型（与 tools.ts 的 LspPluginConfig 对齐；schemastery 不用 z.infer，类型独立声明） */
 export interface Config extends LspConfig {}
@@ -60,4 +60,5 @@ export function apply(ctx: Context, config: Config) {
   ctx.tools.register(createHoverTool(ctx, pool, getConfig))
   ctx.tools.register(createReferencesTool(ctx, pool, getConfig))
   ctx.tools.register(createDiagnosticsTool(ctx, pool, getConfig))
+  ctx.tools.register(createRenameTool(ctx, pool, getConfig))
 }
