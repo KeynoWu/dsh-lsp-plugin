@@ -26,13 +26,15 @@ export const Config: z<Config> = z.object({
   enabled: z.dict(z.boolean()).default({}),
   /** 全局空闲回收阈值（ms），v2 定稿：回收前检查 in-flight，有则跳过 */
   idleTimeoutMs: z.number().min(0).default(300000),
+  /** 并发服务器上限（M4：多会话/多语言资源防护，超限拒绝新服务器） */
+  maxConcurrentServers: z.number().min(1).default(4),
 })
 
 const NS = settingsNamespace('lsp')
 
 export function apply(ctx: Context, config: Config) {
-  console.log(`[dsh-lsp-plugin] apply OK, enabled=${JSON.stringify(config.enabled)} idleTimeoutMs=${config.idleTimeoutMs}`)
-  const pool = new LspPool(ctx, config.idleTimeoutMs)
+  console.log(`[dsh-lsp-plugin] apply OK, enabled=${JSON.stringify(config.enabled)} idleTimeoutMs=${config.idleTimeoutMs} max=${config.maxConcurrentServers}`)
+  const pool = new LspPool(ctx, config.idleTimeoutMs, config.maxConcurrentServers)
 
   // settings section 接线：settings 服务存在时 current 指向解析后的用户配置，
   // 否则退回组合 entry config（installSettingsSection 的 optional 语义）。
@@ -44,6 +46,7 @@ export function apply(ctx: Context, config: Config) {
     },
     onChange: () => {
       pool.idleTimeout = current().idleTimeoutMs
+      pool.concurrentLimit = current().maxConcurrentServers ?? 4
     },
   })
   const getConfig = () => current()

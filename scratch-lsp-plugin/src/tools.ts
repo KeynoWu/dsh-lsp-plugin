@@ -17,6 +17,7 @@ import type { LspPool, LspClient } from './client.ts'
 export interface LspPluginConfig {
   enabled: Record<string, boolean>
   idleTimeoutMs: number
+  maxConcurrentServers?: number
 }
 
 export interface ExecLike {

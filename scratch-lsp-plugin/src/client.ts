@@ -316,10 +316,13 @@ export class LspPool {
   private readonly ctx: LspCtx
   private readonly idleTimer: NodeJS.Timeout
   private idleTimeoutMs: number
+  /** 并发服务器上限（M4：多会话/多语言资源防护，超限拒绝新服务器） */
+  private maxClients: number
 
-  constructor(ctx: LspCtx, idleTimeoutMs = 300_000) {
+  constructor(ctx: LspCtx, idleTimeoutMs = 300_000, maxClients = 4) {
     this.ctx = ctx
     this.idleTimeoutMs = idleTimeoutMs
+    this.maxClients = maxClients
     this.idleTimer = setInterval(() => this.reapIdle(), 30_000)
     this.idleTimer.unref?.()
   }
@@ -328,11 +331,21 @@ export class LspPool {
     this.idleTimeoutMs = value
   }
 
-  /** 取 client（懒启动）；无则新建。 */
+  set concurrentLimit(value: number) {
+    this.maxClients = value
+  }
+
+  /** 取 client（懒启动）；无则新建；达到并发上限时拒绝（明确错误，避免无限 spawn）。 */
   get(entry: LanguageEntry, projectRoot: string): LspClient {
     const key = `${entry.server.command}:${projectRoot}`
     let client = this.clients.get(key)
     if (!client) {
+      if (this.clients.size >= this.maxClients) {
+        throw new Error(
+          `LSP server pool is at its concurrent limit (${this.maxClients}); ` +
+          `dispose unused languages or raise maxConcurrentServers`,
+        )
+      }
       client = new LspClient(entry, projectRoot, this.ctx)
       this.clients.set(key, client)
     }
