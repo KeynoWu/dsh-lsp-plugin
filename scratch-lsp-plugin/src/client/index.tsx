@@ -199,8 +199,8 @@ function LspSettingsSection({ t, useScope, setEnabled, setIdle, loadStatus, inst
         />
       </label>
       {loadFailed && (
-        <p style={{ margin: 0, fontSize: 12, color: 'var(--dsw-alias-label-error, #dc2626)' }}>
-          {t('statusFailed')}
+        <p style={{ margin: 0, fontSize: 12, color: 'var(--dsw-alias-label-tertiary)' }}>
+          （状态暂不可用，语言列表为内置默认）
         </p>
       )}
       {languages.length === 0 && !loadFailed && (

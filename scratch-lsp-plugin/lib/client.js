@@ -150,7 +150,7 @@ window.__ModuleLoader__.load({
             }
           )
         ] }),
-        loadFailed && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: { margin: 0, fontSize: 12, color: "var(--dsw-alias-label-error, #dc2626)" }, children: t("statusFailed") }),
+        loadFailed && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: { margin: 0, fontSize: 12, color: "var(--dsw-alias-label-tertiary)" }, children: "\uFF08\u72B6\u6001\u6682\u4E0D\u53EF\u7528\uFF0C\u8BED\u8A00\u5217\u8868\u4E3A\u5185\u7F6E\u9ED8\u8BA4\uFF09" }),
         languages.length === 0 && !loadFailed && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: { margin: 0, fontSize: 12, color: "var(--dsw-alias-label-tertiary)" }, children: t("statusUnknown") }),
         groups.map((group) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", flexDirection: "column", gap: 6 }, children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h3", { style: { margin: "8px 0 0", fontSize: 14, fontWeight: 600 }, children: group }),
