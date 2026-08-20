@@ -195,7 +195,7 @@ lsp:
 |---|---|---|
 | **M0（风险验证）** | 确认 `ctx.subprocess` 允许 spawn 任意外部二进制（沙箱策略）；确认 settings section + client UI 插件的挂载方式 | 一个最小插件能启动 typescript-language-server 并完成一次 definition 请求 |
 | **M1（端到端最小）✅ 已验收** | 包骨架 + catalog（仅 TS）+ detect + client + `lsp_definition` 单工具 | 在 TS 项目里 agent 能调用 lsp_definition 得到正确位置——**2026 实测：调用点 `index.ts:6:13` → 定义 `index.ts:1:10`** |
-| **M2（全量工具）✅ 已实现，挂载机制已验证** | 四工具 + 生命周期（握手/就绪等待/idle/崩溃重试）+ 全量目录 | 四工具对 TS/Python 均可用（**无 GUI 验证 9/9 + 崩溃重试 PASS**）；挂载后 `http://127.0.0.1:3080/plugins/dsh-lsp-plugin/client.js → 200` 证明插件行激活（client-modules 只 serve 激活 entry）——agent 实测待用户新会话 |
+| **M2（全量工具）✅ 已验收** | 四工具 + 生命周期（握手/就绪等待/idle/崩溃重试）+ 全量目录 | 四工具对 TS/Python 均可用——**2026 agent 实测四项全过**（definition→1:10、hover→签名、references→2 处、diagnostics→TS 2322 + Python 缺参）；无 GUI 验证 9/9 + 崩溃重试 PASS；挂载 serve 200 |
 | **M3（设置页）✅ 实现与挂载机制全部完成，交互待用户** | client 端设置页 + settings section 接线 | host 端 `installSettingsSection` 全链路 PASS（`m3-settings-check.mjs`）；client 端 `src/client/index.tsx` tsc 全绿 + esbuild 构建 `lib/client.js`（ModuleLoader 格式，模拟加载通过）+ **挂载验证通过**（client bundle 被 host serve，200）——设置页交互与勾选生效待用户浏览器确认 |
 | **M4（二期）** | 安装引导、`lsp_rename`/`rename_file`、workspace 诊断、写权限接入 | 按需 |
 
