@@ -14828,13 +14828,14 @@ window.__ModuleLoader__.load({
           },
           setEnabled: (next) => void scope.set("enabled", next),
           setIdle: (ms) => void scope.set("idleTimeoutMs", ms),
-          // 防御：$mount 异步完成前 remote.lspStatus 可能未挂载——避免同步 TypeError（会让组件崩溃白屏）
+          // 通过 ctx.get(name) 读 remote 命名空间服务（无 inject 要求）——self-$mount 场景下
+          // 不能访问 ctx.remote.lspStatus（cordis 守卫要求 inject 声明，而声明会自我等待死锁）
           loadStatus: () => {
-            const svc = ctx.remote.lspStatus;
+            const svc = ctx.get?.("remote.lspStatus");
             return svc ? svc.describe() : Promise.reject(new Error("LSP status remote not ready yet"));
           },
           installLang: (id) => {
-            const svc = ctx.remote.lspStatus;
+            const svc = ctx.get?.("remote.lspStatus");
             return svc ? svc.installLanguage(id) : Promise.reject(new Error("LSP status remote not ready yet"));
           }
         })
