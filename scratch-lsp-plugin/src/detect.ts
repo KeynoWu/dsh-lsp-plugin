@@ -56,11 +56,13 @@ export function resolveCommand(command: string, cwd: string): string | undefined
   return undefined
 }
 
-/** 读版本：优先 versionArgs（如 --version），失败时静默。 */
+/** 读版本：优先 versionArgs（如 --version），失败时静默。
+ *  stderr 必须 ignore：部分服务器（如 pyright-langserver）不认 --version，
+ *  会因 createConnection 缺参把错误打到 stderr——inherit 会把噪音喷到主进程。 */
 function readVersion(binary: string, versionArgs?: string[]): string | undefined {
   if (!versionArgs) return undefined
   try {
-    const out = execFileSync(binary, versionArgs, { encoding: 'utf8', timeout: 5000 })
+    const out = execFileSync(binary, versionArgs, { encoding: 'utf8', timeout: 5000, stdio: ['ignore', 'pipe', 'ignore'] })
     return out.trim().split('\n')[0] || undefined
   } catch {
     return undefined
