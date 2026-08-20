@@ -46,11 +46,11 @@ var __privateIn = (member, obj) => Object(obj) !== obj ? __typeError('Cannot use
 var __privateGet = (obj, member, getter) => (__accessCheck(obj, member, "read from private field"), getter ? getter.call(obj) : member.get(obj));
 var __privateSet = (obj, member, value, setter) => (__accessCheck(obj, member, "write to private field"), setter ? setter.call(obj, value) : member.set(obj, value), value);
 var __privateMethod = (obj, member, method) => (__accessCheck(obj, member, "access private method"), method);
-var _install_dec, _describe_dec, _a, _init;
+var _installLanguage_dec, _describe_dec, _a, _init;
 import { Remote, TypertRemoteService } from "@deepseek-ai/dsh-typert-protocol";
 import { CATALOG } from "../src/catalog.ts";
 import { detectServer } from "../src/detect.ts";
-class LspStatusGateway extends (_a = TypertRemoteService, _describe_dec = [Remote("describe")], _install_dec = [Remote("install")], _a) {
+class LspStatusGateway extends (_a = TypertRemoteService, _describe_dec = [Remote("describe")], _installLanguage_dec = [Remote("installLanguage")], _a) {
   constructor(ctx, getConfig) {
     super(ctx, "lspStatus");
     __runInitializers(_init, 5, this);
@@ -78,7 +78,7 @@ class LspStatusGateway extends (_a = TypertRemoteService, _describe_dec = [Remot
       idleTimeoutMs: config.idleTimeoutMs
     };
   }
-  async install(languageId) {
+  async installLanguage(languageId) {
     const entry = CATALOG.find((e) => e.id === languageId);
     if (!entry) return { ok: false, message: `Unknown language ${languageId}` };
     const inst = entry.install;
@@ -114,7 +114,7 @@ class LspStatusGateway extends (_a = TypertRemoteService, _describe_dec = [Remot
 }
 _init = __decoratorStart(_a);
 __decorateElement(_init, 1, "describe", _describe_dec, LspStatusGateway);
-__decorateElement(_init, 1, "install", _install_dec, LspStatusGateway);
+__decorateElement(_init, 1, "installLanguage", _installLanguage_dec, LspStatusGateway);
 __decoratorMetadata(_init, LspStatusGateway);
 export {
   LspStatusGateway

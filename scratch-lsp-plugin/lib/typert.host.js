@@ -59,10 +59,10 @@ export const TYPERT = {
       },
     },
     {
-      id: 'dsh-lsp-plugin#lspStatus/install',
+      id: 'dsh-lsp-plugin#lspStatus/installLanguage',
       service: 'lspStatus',
       namespace: 'lspStatus',
-      method: 'install',
+      method: 'installLanguage',
       invocation: { kind: 'direct' },
       parameters: [
         {

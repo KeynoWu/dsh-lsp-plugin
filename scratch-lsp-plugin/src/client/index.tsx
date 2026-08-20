@@ -5,6 +5,7 @@
  * 消除双份维护，并展示 可用✓/缺失⚠/版本 状态徽标。
  */
 import { useState, useEffect } from 'react'
+import { z } from 'zod'
 import type { Context } from '@deepseek-ai/cordis'
 // 触发 client 端包的 cordis Context 类型增强（slots/locale/settingsScope/remote）
 import '@deepseek-ai/dsh-client-runtime/client'
@@ -102,7 +103,7 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
   interface TypertRemoteNamespaceMap {
     lspStatus: {
       describe(): Promise<LspStatusDescribe>
-      install(languageId: string): Promise<{
+      installLanguage(languageId: string): Promise<{
         ok: boolean
         status?: { found: boolean; version?: string; reason?: string }
         message?: string
@@ -133,20 +134,21 @@ interface SectionProps {
 function LspSettingsSection({ t, useScope, setEnabled, setIdle, loadStatus, installLang }: SectionProps) {
   const [status, setStatus] = useState<LspStatusDescribe | undefined>(undefined)
   const [loadFailed, setLoadFailed] = useState(false)
+  const [loadError, setLoadError] = useState<string | undefined>(undefined)
   const [installingId, setInstallingId] = useState<string | undefined>(undefined)
   const [installError, setInstallError] = useState<string | undefined>(undefined)
 
   const refresh = () => {
     loadStatus()
-      .then((s) => { setStatus(s); setLoadFailed(false) })
-      .catch(() => setLoadFailed(true))
+      .then((s) => { setStatus(s); setLoadFailed(false); setLoadError(undefined) })
+      .catch((e: unknown) => { setLoadFailed(true); setLoadError(e instanceof Error ? e.message : String(e)) })
   }
 
   useEffect(() => {
     let alive = true
     loadStatus()
-      .then((s) => { if (alive) { setStatus(s); setLoadFailed(false) } })
-      .catch(() => { if (alive) setLoadFailed(true) })
+      .then((s) => { if (alive) { setStatus(s); setLoadFailed(false); setLoadError(undefined) } })
+      .catch((e: unknown) => { if (alive) { setLoadFailed(true); setLoadError(e instanceof Error ? e.message : String(e)) } })
     return () => { alive = false }
   }, [loadStatus])
 
@@ -200,7 +202,7 @@ function LspSettingsSection({ t, useScope, setEnabled, setIdle, loadStatus, inst
       </label>
       {loadFailed && (
         <p style={{ margin: 0, fontSize: 12, color: 'var(--dsw-alias-label-tertiary)' }}>
-          （状态暂不可用，语言列表为内置默认）
+          （状态暂不可用：{loadError ?? '未知错误'}——语言列表为内置默认）
         </p>
       )}
       {languages.length === 0 && !loadFailed && (
@@ -290,7 +292,7 @@ export function apply(ctx: Context) {
   ctx.effect(() => ctx.locale.register(NS, dictionaries), 'dsh-lsp-plugin: section dictionaries')
   const scope = ctx.settingsScope.bind({ namespace: NS })
 
-  // 挂载 host remote 贡献（lspStatus.describe）——描述符与 host 端 gateway 对齐
+  // 挂载 host remote 贡献（lspStatus.describe/install）——codec 必须 strict + zod schema（与 host manifest 对称）
   void ctx.remote.$mount({
     package: 'dsh-lsp-plugin',
     descriptors: [{
@@ -300,17 +302,50 @@ export function apply(ctx: Context) {
       method: 'describe',
       invocation: { kind: 'direct' },
       parameters: [],
-      result: { mode: 'src-json' },
+      result: {
+        mode: 'strict',
+        typeSymbol: 'dsh-lsp-plugin/types#LspStatusDescribe',
+        schema: z.object({
+          languages: z.array(z.object({
+            id: z.string(), displayName: z.string(), group: z.string(), priority: z.string(),
+            heavy: z.boolean().optional(), experimental: z.boolean().optional(),
+          })),
+          statuses: z.record(z.string(), z.object({
+            found: z.boolean(), version: z.string().optional(), reason: z.string().optional(),
+          })),
+          enabled: z.record(z.string(), z.boolean()),
+          idleTimeoutMs: z.number(),
+        }),
+      },
     }, {
-      id: 'lspStatus.install',
+      id: 'lspStatus.installLanguage',
       service: 'lspStatus',
       namespace: 'lspStatus',
-      method: 'install',
+      method: 'installLanguage',
       invocation: { kind: 'direct' },
-      parameters: [{ name: 'languageId', wire: 'languageId', source: 'json', codec: { mode: 'src-json' } }],
-      result: { mode: 'src-json' },
+      parameters: [{
+        name: 'languageId',
+        wire: 'languageId',
+        source: 'json',
+        codec: { mode: 'strict', typeSymbol: 'string', schema: z.string() },
+      }],
+      result: {
+        mode: 'strict',
+        typeSymbol: 'dsh-lsp-plugin/types#LspInstallResult',
+        schema: z.object({
+          ok: z.boolean(),
+          status: z.object({
+            found: z.boolean(), version: z.string().optional(), reason: z.string().optional(),
+          }).optional(),
+          message: z.string().optional(),
+          command: z.string().optional(),
+        }),
+      },
     }],
-  }).catch(() => { /* remote 未就绪时设置页降级为仅勾选 */ })
+  }).catch((e: unknown) => {
+    // 暴露 $mount 失败原因（开发期排查用；remote 未就绪时设置页降级为内置列表）
+    console.error('[dsh-lsp-plugin] $mount failed:', e)
+  })
 
   ctx.slots.inject('settings.section', () => ctx.slots.register({
     name: 'settings.section',
@@ -331,7 +366,7 @@ export function apply(ctx: Context) {
       },
       installLang: (id: string) => {
         const svc = ctx.remote.lspStatus
-        return svc ? svc.install(id) : Promise.reject(new Error('LSP status remote not ready yet'))
+        return svc ? svc.installLanguage(id) : Promise.reject(new Error('LSP status remote not ready yet'))
       },
     }),
   }, LspSettingsSection))

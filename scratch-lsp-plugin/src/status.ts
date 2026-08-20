@@ -76,8 +76,8 @@ export class LspStatusGateway extends TypertRemoteService {
    * 安装引导（M4）：为缺失的语言执行用户级安装命令（非系统级）。
    * 无自动安装命令（仅 note）时返回引导说明。安装是用户显式操作（设置页按钮触发）。
    */
-  @Remote('install')
-  async install(languageId: string): Promise<LspInstallResult> {
+  @Remote('installLanguage')
+  async installLanguage(languageId: string): Promise<LspInstallResult> {
     const entry: LanguageEntry | undefined = CATALOG.find((e) => e.id === languageId)
     if (!entry) return { ok: false, message: `Unknown language ${languageId}` }
     const inst = entry.install
