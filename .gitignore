@@ -14,3 +14,4 @@ m3-settings-check.mjs
 m4-status-check.mjs
 m4-rename-check.mjs
 m4-install-check.mjs
+m4-slow-check.mjs
