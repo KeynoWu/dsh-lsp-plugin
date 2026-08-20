@@ -290,3 +290,10 @@ lsp:
       - **构建链已解决（esbuild 手动构建）**：`scripts/build-client.mjs` 用 esbuild 打包（external react/react-jsx-runtime/@deepseek-ai/*，format cjs）→ 手工 wrap 成 `window.__ModuleLoader__.load({id, factory})`——产物 `lib/client.js`（8KB）**模拟加载通过**（exports apply/inject，与官方格式逐点对齐）
       - **挂载改造（关键）**：client-modules 按 `require.resolve('${pkgName}/package.json')` 解析 client bundle——**绝对路径 entry 不行，必须包名挂载**。已把插件 symlink 进 `~/.dsh/profiles/web/node_modules/dsh-lsp-plugin`，patch entry 改 `name: dsh-lsp-plugin`（main 仍指向 src/index.ts，strip-types 下加载验证通过）；`dsh --dump-config` 组合树合成 ✅、clientPath 解析 ✅（lib/client.js 存在）、dsh.client.inject 6 包 ✅
       - 语言列表当前为 client 端双份维护（与 host catalog 对齐）；M4 改 host remote 下发消除重复
+  - **M4 host remote 打通（2026 实测，设置页状态徽标正常显示）**——手写 typert remote 的完整约束链：
+    1. **host manifest（`lib/typert.host.js`）**：typert-loader 按包名扫描 exports `"./typert"`；`TYPERT.model` **必填**（`{ services/events/objects }`，缺失直接启动崩溃）；invocation codec **必须 `mode: 'strict'` + typeSymbol + zod v4 schema**（`src-json` 被拒）
+    2. **client `$mount` descriptors**：同样必须 strict codec（client 端 `requireStrictCodec` 校验），zod 打进 client bundle（614KB，可后续 external 优化）
+    3. **方法名禁区**：不能与 `RemoteNamespaceService.prototype` 冲突（如 `install` 是保留方法）——remote 方法改名 `installLanguage`
+    4. **self-$mount 的访问方式**：`ctx.remote.lspStatus` 访问触发 cordis "without inject" 守卫（inject 声明会自我等待死锁）——**改用 `ctx.get('remote.lspStatus')`**（cordis 无 inject 要求的 store 读取）
+    5. 排障链条：host manifest 缺 model → 启动崩溃（omp 协助修复）→ client src-json → strict → install 保留名 → without inject 守卫，共四层问题，全部记录
+    6. **维护注意**：改 `src/status.ts` 的 @Remote 方法/返回类型后，需**手动同步** `lib/typert.host.js`（不会被构建脚本覆盖）+ client `$mount` descriptors（三处一致）
