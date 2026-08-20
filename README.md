@@ -1,3 +1,6 @@
+> [!IMPORTANT]
+> **本仓库已归档，不再维护。** 功能已融合进 [**dsh-omp-tools**](https://github.com/KeynoWu/dsh-omp-tools)（模块化融合仓库，LSP 为迭代 1 模块），请前往新仓库获取最新版本。
+
 # dsh-lsp-plugin
 
 **给 DeepSeek Harness 装上真正的语言智能**：内置语言服务器检测与进程池，让 agent 在 coding 时拥有语义级的「查错 / 找定义 / 找引用 / 看类型」能力——不再靠猜。
