@@ -3,3 +3,11 @@ scratch-lsp-plugin/node_modules/
 scratch-lsp-plugin/lib/client.bundle.js
 *.log
 .DS_Store
+
+# 开发期验证脚本与测试项目（本机使用，不入库）
+m0-fixture/
+m0-spawn-check.mjs
+m1-check.mjs
+m2-check.mjs
+m2b-crash-check.mjs
+m3-settings-check.mjs
