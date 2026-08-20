@@ -11,6 +11,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import '@deepseek-ai/dsh-subprocess' // 触发 Context.subprocess 类型增强
 import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
 import { LspPool } from './client.ts'
+import { LspStatusGateway } from '../lib/status.js' // 构建产物（装饰器需转译，见 scripts/build:status）
 import { createDefinitionTool, createHoverTool, createReferencesTool, createDiagnosticsTool, type LspPluginConfig as LspConfig } from './tools.ts'
 
 export const name = 'dsh-lsp-plugin'
@@ -46,6 +47,9 @@ export function apply(ctx: Context, config: Config) {
     },
   })
   const getConfig = () => current()
+
+  // host remote：设置页状态查询（语言目录 + 检测状态 + 当前配置）
+  new LspStatusGateway(ctx, getConfig)
 
   // 卸载时释放全部语言服务器进程（双保险：subprocess 服务销毁也会兜底）
   ctx.effect(() => {

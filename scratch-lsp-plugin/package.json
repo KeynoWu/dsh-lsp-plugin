@@ -29,7 +29,8 @@
     "@deepseek-ai/dsh-settings": "^0.1.0-rc.8",
     "@deepseek-ai/dsh-subprocess": "^0.1.0-rc.8",
     "@deepseek-ai/dsh-tools": "^0.1.0-rc.8",
-    "@deepseek-ai/schemastery": "^3.18.1"
+    "@deepseek-ai/schemastery": "^3.18.1",
+    "@deepseek-ai/dsh-typert-protocol": "^0.1.0-rc.8"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
@@ -39,6 +40,7 @@
     "@deepseek-ai/dsh-client-runtime": "^0.1.0-rc.8",
     "@deepseek-ai/dsh-client-ui-settings": "^0.1.0-rc.8",
     "@deepseek-ai/dsh-client-ui-slots": "^0.1.0-rc.8",
+    "@deepseek-ai/dsh-typert-protocol": "^0.1.0-rc.8",
     "@types/node": "^26.2.0",
     "@types/react": "^18.3.0",
     "esbuild": "^0.28.2",
@@ -48,6 +50,7 @@
   },
   "scripts": {
     "bundle": "tsdown --entry src/client/index.tsx --format esm --platform browser --out-dir lib --sourcemap && node scripts/wrap-client.mjs",
-    "build": "pnpm run bundle"
+    "build": "pnpm run build:status && node scripts/build-client.mjs",
+    "build:status": "esbuild src/status.ts --format=esm --target=es2022 --outfile=lib/status.js --log-level=warning && node scripts/fix-status-paths.mjs"
   }
 }

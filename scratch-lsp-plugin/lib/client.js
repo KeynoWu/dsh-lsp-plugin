@@ -29,9 +29,11 @@ window.__ModuleLoader__.load({
       inject: () => inject
     });
     module.exports = __toCommonJS(index_exports);
+    var import_react = require("react");
     var import_client = require("@deepseek-ai/dsh-client-runtime/client");
     var import_client2 = require("@deepseek-ai/dsh-client-locale/client");
     var import_client3 = require("@deepseek-ai/dsh-client-ui-settings/client");
+    var import_client4 = require("@deepseek-ai/dsh-api-remotes/client");
     var import_jsx_runtime = require("react/jsx-runtime");
     var zh = {
       nav: "LSP \u8BED\u8A00",
@@ -41,27 +43,12 @@ window.__ModuleLoader__.load({
       heavy: "\u91CD",
       experimental: "\u5B9E\u9A8C\u6027",
       statusOn: "\u5DF2\u542F\u7528",
-      statusOff: "\u672A\u542F\u7528"
+      statusOff: "\u672A\u542F\u7528",
+      statusAvailable: "\u53EF\u7528",
+      statusMissing: "\u7F3A\u5931",
+      statusUnknown: "\u2026",
+      statusFailed: "\u72B6\u6001\u52A0\u8F7D\u5931\u8D25"
     };
-    var NS = "lsp";
-    var LANGUAGES = [
-      { id: "typescript", displayName: "TypeScript/JavaScript", group: "\u524D\u7AEF", priority: "P0" },
-      { id: "vue", displayName: "Vue", group: "\u524D\u7AEF", priority: "P1" },
-      { id: "html", displayName: "HTML", group: "\u524D\u7AEF", priority: "P2" },
-      { id: "css", displayName: "CSS/SCSS", group: "\u524D\u7AEF", priority: "P2" },
-      { id: "python", displayName: "Python", group: "\u540E\u7AEF", priority: "P0" },
-      { id: "go", displayName: "Go", group: "\u540E\u7AEF", priority: "P1" },
-      { id: "rust", displayName: "Rust", group: "\u540E\u7AEF", priority: "P1", heavy: true },
-      { id: "java", displayName: "Java", group: "\u540E\u7AEF", priority: "P2", heavy: true },
-      { id: "csharp", displayName: "C#", group: "\u540E\u7AEF", priority: "P2", heavy: true },
-      { id: "php", displayName: "PHP", group: "\u540E\u7AEF", priority: "P2" },
-      { id: "ruby", displayName: "Ruby", group: "\u540E\u7AEF", priority: "P2" },
-      { id: "cpp", displayName: "C/C++", group: "\u540E\u7AEF", priority: "P2" },
-      { id: "kotlin", displayName: "Kotlin", group: "Android", priority: "P2" },
-      { id: "swift", displayName: "Swift", group: "iOS", priority: "P1", heavy: true },
-      { id: "sql", displayName: "SQL", group: "\u6570\u636E", priority: "P3", experimental: true },
-      { id: "r", displayName: "R", group: "\u6570\u636E", priority: "P3", experimental: true }
-    ];
     var en = {
       nav: "LSP Languages",
       summary: "Enable languages; servers that are not installed stay off to avoid wasted calls.",
@@ -70,21 +57,44 @@ window.__ModuleLoader__.load({
       heavy: "heavy",
       experimental: "experimental",
       statusOn: "on",
-      statusOff: "off"
+      statusOff: "off",
+      statusAvailable: "available",
+      statusMissing: "missing",
+      statusUnknown: "\u2026",
+      statusFailed: "status load failed"
     };
     var dictionaries = { zh, en };
-    function LspSettingsSection({ t, useScope, setEnabled, setIdle }) {
-      const snap = useScope((s) => s);
-      const value = snap.value ?? {};
+    var NS = "lsp";
+    function LspSettingsSection({ t, useScope, setEnabled, setIdle, loadStatus }) {
+      const [status, setStatus] = (0, import_react.useState)(void 0);
+      const [loadFailed, setLoadFailed] = (0, import_react.useState)(false);
+      (0, import_react.useEffect)(() => {
+        let alive = true;
+        loadStatus().then((s) => {
+          if (alive) {
+            setStatus(s);
+            setLoadFailed(false);
+          }
+        }).catch(() => {
+          if (alive) setLoadFailed(true);
+        });
+        return () => {
+          alive = false;
+        };
+      }, [loadStatus]);
+      const scopeSnap = useScope((s) => s);
+      const value = scopeSnap.value ?? {};
       const enabled = value.enabled ?? {};
       const idleMs = value.idleTimeoutMs ?? 3e5;
+      const languages = status?.languages ?? [];
+      const statuses = status?.statuses ?? {};
+      const groups = [...new Set(languages.map((l) => l.group))];
       const toggle = (id, next) => {
         setEnabled({ ...enabled, [id]: next });
       };
       const changeIdle = (ms) => {
         setIdle(ms);
       };
-      const groups = [...new Set(LANGUAGES.map((l) => l.group))];
       return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", flexDirection: "column", gap: 12 }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: { margin: 0, color: "var(--dsw-alias-label-secondary)", fontSize: 13 }, children: t("summary") }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { style: { display: "flex", alignItems: "center", gap: 8, fontSize: 13 }, children: [
@@ -101,10 +111,14 @@ window.__ModuleLoader__.load({
             }
           )
         ] }),
+        loadFailed && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: { margin: 0, fontSize: 12, color: "var(--dsw-alias-label-error, #dc2626)" }, children: t("statusFailed") }),
+        languages.length === 0 && !loadFailed && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: { margin: 0, fontSize: 12, color: "var(--dsw-alias-label-tertiary)" }, children: t("statusUnknown") }),
         groups.map((group) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", flexDirection: "column", gap: 6 }, children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h3", { style: { margin: "8px 0 0", fontSize: 14, fontWeight: 600 }, children: group }),
-          LANGUAGES.filter((l) => l.group === group).map((lang) => {
+          languages.filter((l) => l.group === group).map((lang) => {
             const isOn = !!enabled[lang.id];
+            const st = statuses[lang.id];
+            const badge = st ? st.found ? { text: st.version ? `\u2713 ${st.version}` : t("statusAvailable"), color: "var(--dsw-alias-bg-success, #16a34a)" } : { text: `${t("statusMissing")} \u26A0`, color: "var(--dsw-alias-bg-warning, #d97706)" } : { text: t("statusUnknown"), color: "var(--dsw-alias-label-tertiary)" };
             return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
               "label",
               {
@@ -128,12 +142,15 @@ window.__ModuleLoader__.load({
                   /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { flex: 1 }, children: lang.displayName }),
                   lang.heavy && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: 11, color: "var(--dsw-alias-label-tertiary)" }, children: t("heavy") }),
                   lang.experimental && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: 11, color: "var(--dsw-alias-label-tertiary)" }, children: t("experimental") }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: 11, color: badge.color, minWidth: 56, textAlign: "right" }, children: badge.text }),
                   /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
                     "span",
                     {
                       style: {
                         fontSize: 11,
-                        color: isOn ? "var(--dsw-alias-bg-success, #16a34a)" : "var(--dsw-alias-label-tertiary)"
+                        color: isOn ? "var(--dsw-alias-bg-success, #16a34a)" : "var(--dsw-alias-label-tertiary)",
+                        minWidth: 44,
+                        textAlign: "right"
                       },
                       children: isOn ? t("statusOn") : t("statusOff")
                     }
@@ -150,6 +167,19 @@ window.__ModuleLoader__.load({
       const t = ctx.locale.bind(NS);
       ctx.effect(() => ctx.locale.register(NS, dictionaries), "dsh-lsp-plugin: section dictionaries");
       const scope = ctx.settingsScope.bind({ namespace: NS });
+      void ctx.remote.$mount({
+        package: "dsh-lsp-plugin",
+        descriptors: [{
+          id: "lspStatus.describe",
+          service: "lspStatus",
+          namespace: "lspStatus",
+          method: "describe",
+          invocation: { kind: "direct" },
+          parameters: [],
+          result: { mode: "src-json" }
+        }]
+      }).catch(() => {
+      });
       ctx.slots.inject("settings.section", () => ctx.slots.register({
         name: "settings.section",
         id: "lsp",
@@ -161,7 +191,8 @@ window.__ModuleLoader__.load({
             scope
           },
           setEnabled: (next) => void scope.set("enabled", next),
-          setIdle: (ms) => void scope.set("idleTimeoutMs", ms)
+          setIdle: (ms) => void scope.set("idleTimeoutMs", ms),
+          loadStatus: () => ctx.remote.lspStatus.describe()
         })
       }, LspSettingsSection));
     }
