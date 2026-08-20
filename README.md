@@ -2,7 +2,7 @@
 
 **给 DeepSeek Harness 装上真正的语言智能**：内置语言服务器检测与进程池，让 agent 在 coding 时拥有语义级的「查错 / 找定义 / 找引用 / 看类型」能力——不再靠猜。
 
-> 状态：M1–M3 已实现并通过验证（设计文档：[lsp-plugin-design.md](./lsp-plugin-design.md) v2）
+> 状态：M1–M4 已实现并通过验证（设计文档：[lsp-plugin-design.md](./lsp-plugin-design.md) v2）
 
 ---
 
@@ -25,7 +25,7 @@
 
 ## 能力
 
-**四只读工具**（全部基于 LSP 语义分析，非文本搜索）：
+**五个工具**（四个只读 + 一个写操作，全部基于 LSP 语义分析，非文本搜索）：
 
 | 工具 | 作用 |
 |---|---|
@@ -33,14 +33,15 @@
 | `lsp_definition` | 符号定义位置（穿透别名/重导出/动态分发） |
 | `lsp_references` | 全部引用（含声明，语义精确，不含注释/字符串噪音） |
 | `lsp_hover` | 类型签名/文档（Markdown 扁平化） |
+| `lsp_rename` | **语义重命名**（跨文件引用同步，WorkspaceEdit 经 DSH 文件 seam 应用，走写审批） |
 
 **内置 16 种语言目录**（前端/后端/Android/iOS/数据岗位全覆盖）：TypeScript、Vue、HTML、CSS、Python(pyright)、Go、Rust、Java、C#、PHP、Ruby、C/C++、Kotlin、Swift、SQL、R。
 
 - **默认全部不启用**——在设置页勾选你要用的岗位语言即可，零资源浪费
 - 勾选后**当前会话即时生效**，无需重启
-- 语言服务器**不随插件安装**：检测本机已有二进制（`node_modules/.bin` → `$PATH`），缺失时设置页明确显示状态
+- 语言服务器**不随插件安装**：检测本机已有二进制（`node_modules/.bin` → `$PATH`）；缺失时设置页显示状态，**可一键安装引导**（每语言内置安装命令，用户级目录安装）
 
-**工程化生命周期**：懒启动（不勾选不 spawn）、`command:projectRoot` 进程池（同一项目共享一个服务器实例）、就绪等待独立预算（重语言如 rust-analyzer 首启不卡工具超时）、idle 回收（空闲自动释放，in-flight 不打断）、崩溃自动重启（上限 1，避免打转）。
+**工程化生命周期**：懒启动（不勾选不 spawn）、`command:projectRoot` 进程池（同一项目共享一个服务器实例）、就绪等待独立预算（重语言如 rust-analyzer/sourcekit-lsp 首启不卡工具超时，实测独立超时生效）、idle 回收（空闲自动释放，in-flight 不打断）、崩溃自动重启（上限 1，避免打转）、**并发上限**（`maxConcurrentServers` 默认 4，超限明确拒绝）。
 
 ---
 
@@ -71,7 +72,7 @@ npm i -g typescript-language-server pyright   # TS/JS + Python（P0，最成熟�
 
 ## 设置
 
-设置 → **LSP 语言**：按岗位分组的 16 语言勾选 + 空闲回收超时。也可直接编辑 `~/.dsh/settings.yaml`（外部编辑自动生效）：
+设置 → **LSP 语言**：按岗位分组的 16 语言勾选 + 空闲回收超时 + 并发上限；每行显示状态徽标（可用 ✓版本 / 缺失 ⚠ + 安装按钮）。也可直接编辑 `~/.dsh/settings.yaml`（外部编辑自动生效）：
 
 ```yaml
 lsp:
@@ -79,24 +80,26 @@ lsp:
     typescript: true
     python: true
   idleTimeoutMs: 300000
+  maxConcurrentServers: 4
 ```
 
 ## 开发与验证
 
 ```bash
-cd scratch-lsp-plugin && npx tsc --noEmit      # 类型检查
-node scripts/build-client.mjs                  # client bundle 构建（DSH ModuleLoader 格式）
+cd scratch-lsp-plugin && npx tsc --noEmit          # 类型检查
+node scripts/build-client.mjs                      # client bundle（DSH ModuleLoader 格式）
+npm run build:status                               # host remote gateway（装饰器转译）
 ```
 
-各里程碑的验证结论（沙箱 spawn、双向 JSON-RPC、四工具 9/9、崩溃重试、settings 接线全链路）记录在设计文档 [lsp-plugin-design.md](./lsp-plugin-design.md) §11.3；开发期验证脚本依赖本机 DSH 安装，保存在仓库历史中，需要时从 git 历史找回。
+各里程碑的验证结论（沙箱 spawn、双向 JSON-RPC、五工具 TS/Python 9/9、崩溃重试、settings 接线、慢启动独立预算、并发上限、pyright 噪音修复）记录在设计文档 [lsp-plugin-design.md](./lsp-plugin-design.md) §11.3；开发期验证脚本依赖本机 DSH 安装，保存在仓库历史中，需要时从 git 历史找回。
 
 ## 里程碑
 
 - **M0** ✅ 风险验证（沙箱可 spawn 外部二进制、双向 JSON-RPC、环境 scrub）
 - **M1** ✅ 端到端最小（`lsp_definition`，agent 实测返回正确定义位置）
 - **M2** ✅ 四工具 + 生命周期 + 全量目录（9/9 + 崩溃重试 PASS）
-- **M3** ✅ host settings 接线 + client 设置页（esbuild ModuleLoader bundle）
-- **M4** 二期：安装引导、`lsp_rename`、workspace 诊断、写权限接入（规划中）
+- **M3** ✅ host settings 接线 + client 设置页（esbuild ModuleLoader bundle，浏览器验收通过）
+- **M4** ✅ host remote 状态数据源 + 安装引导 + `lsp_rename`（ctx.fs 写审批）+ pyright 噪音修复 + 慢启动实测 + 并发上限（workspace 诊断按需）
 
 ## License
 
