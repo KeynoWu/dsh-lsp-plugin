@@ -46,11 +46,11 @@ var __privateIn = (member, obj) => Object(obj) !== obj ? __typeError('Cannot use
 var __privateGet = (obj, member, getter) => (__accessCheck(obj, member, "read from private field"), getter ? getter.call(obj) : member.get(obj));
 var __privateSet = (obj, member, value, setter) => (__accessCheck(obj, member, "write to private field"), setter ? setter.call(obj, value) : member.set(obj, value), value);
 var __privateMethod = (obj, member, method) => (__accessCheck(obj, member, "access private method"), method);
-var _describe_dec, _a, _init;
+var _install_dec, _describe_dec, _a, _init;
 import { Remote, TypertRemoteService } from "@deepseek-ai/dsh-typert-protocol";
 import { CATALOG } from "../src/catalog.ts";
 import { detectServer } from "../src/detect.ts";
-class LspStatusGateway extends (_a = TypertRemoteService, _describe_dec = [Remote("describe")], _a) {
+class LspStatusGateway extends (_a = TypertRemoteService, _describe_dec = [Remote("describe")], _install_dec = [Remote("install")], _a) {
   constructor(ctx, getConfig) {
     super(ctx, "lspStatus");
     __runInitializers(_init, 5, this);
@@ -78,9 +78,43 @@ class LspStatusGateway extends (_a = TypertRemoteService, _describe_dec = [Remot
       idleTimeoutMs: config.idleTimeoutMs
     };
   }
+  async install(languageId) {
+    const entry = CATALOG.find((e) => e.id === languageId);
+    if (!entry) return { ok: false, message: `Unknown language ${languageId}` };
+    const inst = entry.install;
+    if (!inst?.command) {
+      return { ok: false, message: inst?.note ?? `No automated install for ${entry.displayName}` };
+    }
+    const argv = [inst.command, ...inst.args ?? []];
+    const cwd = process.cwd();
+    try {
+      const subprocess = this.ctx.subprocess;
+      if (!subprocess) return { ok: false, message: "subprocess seam unavailable" };
+      const handle = subprocess.spawn({
+        argv,
+        cwd,
+        stdio: { stdin: "ignore", stdout: { maxBytes: 128 * 1024 }, stderr: { maxBytes: 128 * 1024 } },
+        graceMs: 5e3
+      });
+      const outcome = await handle.done;
+      if (outcome.exitCode !== 0) {
+        return { ok: false, message: `Install failed (exit ${outcome.exitCode})`, command: argv.join(" ") };
+      }
+      const status = detectServer(entry.server, cwd);
+      return {
+        ok: status.found,
+        status,
+        message: status.found ? void 0 : "Install ran but server still not detected; check PATH",
+        command: argv.join(" ")
+      };
+    } catch (error) {
+      return { ok: false, message: `Install error: ${error instanceof Error ? error.message : String(error)}`, command: argv.join(" ") };
+    }
+  }
 }
 _init = __decoratorStart(_a);
 __decorateElement(_init, 1, "describe", _describe_dec, LspStatusGateway);
+__decorateElement(_init, 1, "install", _install_dec, LspStatusGateway);
 __decoratorMetadata(_init, LspStatusGateway);
 export {
   LspStatusGateway

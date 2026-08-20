@@ -197,7 +197,7 @@ lsp:
 | **M1（端到端最小）✅ 已验收** | 包骨架 + catalog（仅 TS）+ detect + client + `lsp_definition` 单工具 | 在 TS 项目里 agent 能调用 lsp_definition 得到正确位置——**2026 实测：调用点 `index.ts:6:13` → 定义 `index.ts:1:10`** |
 | **M2（全量工具）✅ 已验收** | 四工具 + 生命周期（握手/就绪等待/idle/崩溃重试）+ 全量目录 | 四工具对 TS/Python 均可用——**2026 agent 实测四项全过**（definition→1:10、hover→签名、references→2 处、diagnostics→TS 2322 + Python 缺参）；无 GUI 验证 9/9 + 崩溃重试 PASS；挂载 serve 200 |
 | **M3（设置页）✅ 已验收** | client 端设置页 + settings section 接线 | host 端 `installSettingsSection` 全链路 PASS（`m3-settings-check.mjs`）；client 端 `src/client/index.tsx` tsc 全绿 + esbuild 构建 `lib/client.js` + 挂载 serve 200——**2026 用户浏览器验收通过**（设置页 16 语言分组显示、勾选/取消同会话即时生效） |
-| **M4（二期）🔄 host remote ✅，其余按序** | 安装引导、`lsp_rename`/`rename_file`、workspace 诊断、写权限接入、host remote 下发语言目录、pyright 噪音排查、慢启动实测、多会话资源上限 | **host remote 已实现并验证**（`LspStatusGateway`：@Remote describe 下发语言目录+检测状态+配置；client 端 `$mount` 接入，设置页状态徽标 可用✓/缺失⚠/版本，双份语言列表已消除）；其余按依赖序推进 |
+| **M4（二期）🔄 host remote ✅ 安装引导 ✅，其余按序** | 安装引导、`lsp_rename`/`rename_file`、workspace 诊断、写权限接入、host remote 下发语言目录、pyright 噪音排查、慢启动实测、多会话资源上限 | **host remote 已实现并验证**（describe 下发目录/状态/配置 + client $mount + 状态徽标）；**安装引导已实现并验证**（16 语言 install 模板、note-only 引导、gateway.install 经 subprocess 执行用户级安装、client 缺失行"安装"按钮、安装后重新检测）；其余按序推进 |
 
 ---
 

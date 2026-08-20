@@ -20,7 +20,15 @@ export interface LspStatusDescribe {
   idleTimeoutMs: number
 }
 
+export interface LspInstallResult {
+  ok: boolean
+  status?: { found: boolean; version?: string; reason?: string }
+  message?: string
+  command?: string
+}
+
 export class LspStatusGateway {
   constructor(ctx: Context, getConfig: () => { enabled: Record<string, boolean>; idleTimeoutMs: number })
   describe(): LspStatusDescribe
+  install(languageId: string): Promise<LspInstallResult>
 }

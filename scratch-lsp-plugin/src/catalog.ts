@@ -29,6 +29,13 @@ export interface LanguageEntry {
   experimental?: boolean
   /** 就绪等待预算（ms），默认 60000；重语言默认 120000（v2 定稿） */
   readyTimeoutMs?: number
+  /** 安装引导（M4）：命令模板（用户级目录安装，非系统级）+ 可选说明；command 与 note 至少其一 */
+  install?: {
+    command?: string
+    args?: string[]
+    /** 无自动安装命令时的引导说明（如"需 Xcode/手动安装"） */
+    note?: string
+  }
 }
 
 export const CATALOG: LanguageEntry[] = [
@@ -47,6 +54,10 @@ export const CATALOG: LanguageEntry[] = [
       rootMarkers: ['package.json', 'tsconfig.json'],
     },
     priority: 'P0',
+    install: {
+      command: 'npm',
+      args: ['install', '-g', 'typescript-language-server'],
+    },
   },
   {
     id: 'vue',
@@ -61,6 +72,10 @@ export const CATALOG: LanguageEntry[] = [
       rootMarkers: ['package.json', 'vue.config.js', 'vite.config.ts', 'vite.config.js'],
     },
     priority: 'P1',
+    install: {
+      command: 'npm',
+      args: ['install', '-g', '@vue/language-server'],
+    },
   },
   {
     id: 'html',
@@ -75,6 +90,10 @@ export const CATALOG: LanguageEntry[] = [
       rootMarkers: ['package.json', 'index.html'],
     },
     priority: 'P2',
+    install: {
+      command: 'npm',
+      args: ['install', '-g', 'vscode-html-language-server'],
+    },
   },
   {
     id: 'css',
@@ -89,6 +108,10 @@ export const CATALOG: LanguageEntry[] = [
       rootMarkers: ['package.json', '.vscode', 'vite.config.ts', 'vite.config.js'],
     },
     priority: 'P2',
+    install: {
+      command: 'npm',
+      args: ['install', '-g', 'vscode-css-language-server'],
+    },
   },
   // ---- 后端 ----
   {
@@ -104,6 +127,10 @@ export const CATALOG: LanguageEntry[] = [
       rootMarkers: ['pyproject.toml', 'requirements.txt', 'setup.py', 'setup.cfg', 'Pipfile'],
     },
     priority: 'P0',
+    install: {
+      command: 'npm',
+      args: ['install', '-g', 'pyright'],
+    },
   },
   {
     id: 'go',
@@ -118,6 +145,10 @@ export const CATALOG: LanguageEntry[] = [
       rootMarkers: ['go.mod', 'go.work'],
     },
     priority: 'P1',
+    install: {
+      command: 'go',
+      args: ['install', 'golang.org/x/tools/gopls@latest'],
+    },
   },
   {
     id: 'rust',
@@ -132,6 +163,10 @@ export const CATALOG: LanguageEntry[] = [
       rootMarkers: ['Cargo.toml'],
     },
     priority: 'P1',
+    install: {
+      command: 'rustup',
+      args: ['component', 'add', 'rust-analyzer'],
+    },
     heavy: true,
     readyTimeoutMs: 120000,
   },
@@ -147,6 +182,9 @@ export const CATALOG: LanguageEntry[] = [
       rootMarkers: ['pom.xml', 'build.gradle', 'settings.gradle', 'gradlew'],
     },
     priority: 'P2',
+    install: {
+      note: '需 Eclipse JDTLS：brew install jdtls 或从 IDE 下载（重，需 JVM）',
+    },
     heavy: true,
     readyTimeoutMs: 120000,
   },
@@ -162,6 +200,9 @@ export const CATALOG: LanguageEntry[] = [
       rootMarkers: ['*.csproj', '*.sln'],
     },
     priority: 'P2',
+    install: {
+      note: '需 .NET SDK；csharp-ls 按官方指引手动安装（重）',
+    },
     heavy: true,
     readyTimeoutMs: 120000,
   },
@@ -178,6 +219,10 @@ export const CATALOG: LanguageEntry[] = [
       rootMarkers: ['composer.json'],
     },
     priority: 'P2',
+    install: {
+      command: 'npm',
+      args: ['install', '-g', 'intelephense'],
+    },
   },
   {
     id: 'ruby',
@@ -192,6 +237,10 @@ export const CATALOG: LanguageEntry[] = [
       rootMarkers: ['Gemfile', '.ruby-version'],
     },
     priority: 'P2',
+    install: {
+      command: 'gem',
+      args: ['install', 'ruby-lsp'],
+    },
   },
   {
     id: 'cpp',
@@ -207,6 +256,9 @@ export const CATALOG: LanguageEntry[] = [
       rootMarkers: ['CMakeLists.txt', 'compile_commands.json', '.clangd'],
     },
     priority: 'P2',
+    install: {
+      note: 'clangd 随 LLVM：brew install llvm（或安装 Xcode CommandLineTools）',
+    },
   },
   // ---- Android ----
   {
@@ -221,6 +273,10 @@ export const CATALOG: LanguageEntry[] = [
       rootMarkers: ['build.gradle.kts', 'settings.gradle.kts'],
     },
     priority: 'P2',
+    install: {
+      command: 'npm',
+      args: ['install', '-g', 'kotlin-language-server'],
+    },
   },
   // ---- iOS ----
   {
@@ -236,6 +292,9 @@ export const CATALOG: LanguageEntry[] = [
       rootMarkers: ['Package.swift', 'Podfile', '.xcodeproj'],
     },
     priority: 'P1',
+    install: {
+      note: '随 Xcode / CommandLineTools 提供（仅 macOS）',
+    },
     heavy: true,
     readyTimeoutMs: 120000,
   },
@@ -252,6 +311,11 @@ export const CATALOG: LanguageEntry[] = [
       rootMarkers: ['sqls.yml', '.sqls', '*.sql'],
     },
     priority: 'P3',
+    install: {
+      command: 'go',
+      args: ['install', 'github.com/sqls-server/sqls@latest'],
+      note: '实验性，语义较浅',
+    },
     experimental: true,
   },
   {
@@ -266,6 +330,9 @@ export const CATALOG: LanguageEntry[] = [
       rootMarkers: ['DESCRIPTION', '*.Rproj'],
     },
     priority: 'P3',
+    install: {
+      note: '在 R 中执行 install.packages("languageserver")',
+    },
     experimental: true,
   },
 ]

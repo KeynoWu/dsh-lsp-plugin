@@ -65,9 +65,17 @@ window.__ModuleLoader__.load({
     };
     var dictionaries = { zh, en };
     var NS = "lsp";
-    function LspSettingsSection({ t, useScope, setEnabled, setIdle, loadStatus }) {
+    function LspSettingsSection({ t, useScope, setEnabled, setIdle, loadStatus, installLang }) {
       const [status, setStatus] = (0, import_react.useState)(void 0);
       const [loadFailed, setLoadFailed] = (0, import_react.useState)(false);
+      const [installingId, setInstallingId] = (0, import_react.useState)(void 0);
+      const [installError, setInstallError] = (0, import_react.useState)(void 0);
+      const refresh = () => {
+        loadStatus().then((s) => {
+          setStatus(s);
+          setLoadFailed(false);
+        }).catch(() => setLoadFailed(true));
+      };
       (0, import_react.useEffect)(() => {
         let alive = true;
         loadStatus().then((s) => {
@@ -82,6 +90,19 @@ window.__ModuleLoader__.load({
           alive = false;
         };
       }, [loadStatus]);
+      const onInstall = async (id) => {
+        setInstallingId(id);
+        setInstallError(void 0);
+        try {
+          const res = await installLang(id);
+          if (!res.ok) setInstallError(`${id}: ${res.message ?? "install failed"}`);
+          refresh();
+        } catch (e) {
+          setInstallError(`${id}: ${e instanceof Error ? e.message : String(e)}`);
+        } finally {
+          setInstallingId(void 0);
+        }
+      };
       const scopeSnap = useScope((s) => s);
       const value = scopeSnap.value ?? {};
       const enabled = value.enabled ?? {};
@@ -143,6 +164,26 @@ window.__ModuleLoader__.load({
                   lang.heavy && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: 11, color: "var(--dsw-alias-label-tertiary)" }, children: t("heavy") }),
                   lang.experimental && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: 11, color: "var(--dsw-alias-label-tertiary)" }, children: t("experimental") }),
                   /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: 11, color: badge.color, minWidth: 56, textAlign: "right" }, children: badge.text }),
+                  st && !st.found && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                    "button",
+                    {
+                      type: "button",
+                      disabled: installingId !== void 0,
+                      onClick: (e) => {
+                        e.preventDefault();
+                        void onInstall(lang.id);
+                      },
+                      style: {
+                        fontSize: 11,
+                        padding: "2px 8px",
+                        cursor: installingId === lang.id ? "wait" : "pointer",
+                        background: "var(--dsw-alias-bg-module-platform, #f0f0f0)",
+                        border: "1px solid var(--dsw-alias-border-l2, #ddd)",
+                        borderRadius: 4
+                      },
+                      children: installingId === lang.id ? "\u2026" : "\u5B89\u88C5"
+                    }
+                  ),
                   /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
                     "span",
                     {
@@ -160,7 +201,8 @@ window.__ModuleLoader__.load({
               lang.id
             );
           })
-        ] }, group))
+        ] }, group)),
+        installError && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: { margin: 0, fontSize: 12, color: "var(--dsw-alias-label-error, #dc2626)" }, children: installError })
       ] });
     }
     function apply(ctx) {
@@ -177,6 +219,14 @@ window.__ModuleLoader__.load({
           invocation: { kind: "direct" },
           parameters: [],
           result: { mode: "src-json" }
+        }, {
+          id: "lspStatus.install",
+          service: "lspStatus",
+          namespace: "lspStatus",
+          method: "install",
+          invocation: { kind: "direct" },
+          parameters: [{ name: "languageId", wire: "languageId", source: "json", codec: { mode: "src-json" } }],
+          result: { mode: "src-json" }
         }]
       }).catch(() => {
       });
@@ -192,7 +242,8 @@ window.__ModuleLoader__.load({
           },
           setEnabled: (next) => void scope.set("enabled", next),
           setIdle: (ms) => void scope.set("idleTimeoutMs", ms),
-          loadStatus: () => ctx.remote.lspStatus.describe()
+          loadStatus: () => ctx.remote.lspStatus.describe(),
+          installLang: (id) => ctx.remote.lspStatus.install(id)
         })
       }, LspSettingsSection));
     }

@@ -6,7 +6,7 @@
  */
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import type { Context } from '@deepseek-ai/cordis'
-import { CATALOG } from './catalog.ts'
+import { CATALOG, type LanguageEntry } from './catalog.ts'
 import { detectServer } from './detect.ts'
 
 export interface LspLanguageMeta {
@@ -25,6 +25,16 @@ export interface LspStatusDescribe {
   /** 当前启用的语言（settings 解析值） */
   enabled: Record<string, boolean>
   idleTimeoutMs: number
+}
+
+export interface LspInstallResult {
+  ok: boolean
+  /** 安装完成后的检测结果（成功时） */
+  status?: { found: boolean; version?: string; reason?: string }
+  /** 失败原因 / 无自动安装命令时的引导说明 */
+  message?: string
+  /** 实际执行的安装命令（执行时） */
+  command?: string
 }
 
 type ConfigReader = () => { enabled: Record<string, boolean>; idleTimeoutMs: number }
@@ -59,6 +69,50 @@ export class LspStatusGateway extends TypertRemoteService {
       statuses,
       enabled: config.enabled,
       idleTimeoutMs: config.idleTimeoutMs,
+    }
+  }
+
+  /**
+   * 安装引导（M4）：为缺失的语言执行用户级安装命令（非系统级）。
+   * 无自动安装命令（仅 note）时返回引导说明。安装是用户显式操作（设置页按钮触发）。
+   */
+  @Remote('install')
+  async install(languageId: string): Promise<LspInstallResult> {
+    const entry: LanguageEntry | undefined = CATALOG.find((e) => e.id === languageId)
+    if (!entry) return { ok: false, message: `Unknown language ${languageId}` }
+    const inst = entry.install
+    if (!inst?.command) {
+      return { ok: false, message: inst?.note ?? `No automated install for ${entry.displayName}` }
+    }
+    const argv = [inst.command, ...(inst.args ?? [])]
+    const cwd = process.cwd()
+    try {
+      const subprocess = (this.ctx as Context & { subprocess?: { spawn(spec: {
+        argv: readonly string[]; cwd: string
+        stdio: { stdin: 'ignore' | 'pipe'; stdout: { maxBytes: number }; stderr: { maxBytes: number } }
+        graceMs: number
+      }): { done: Promise<{ exitCode: number | null }>; terminate(): void } } }).subprocess
+      if (!subprocess) return { ok: false, message: 'subprocess seam unavailable' }
+      const handle = subprocess.spawn({
+        argv,
+        cwd,
+        stdio: { stdin: 'ignore', stdout: { maxBytes: 128 * 1024 }, stderr: { maxBytes: 128 * 1024 } },
+        graceMs: 5000,
+      })
+      const outcome = await handle.done
+      if (outcome.exitCode !== 0) {
+        return { ok: false, message: `Install failed (exit ${outcome.exitCode})`, command: argv.join(' ') }
+      }
+      // 安装后重新检测
+      const status = detectServer(entry.server, cwd)
+      return {
+        ok: status.found,
+        status,
+        message: status.found ? undefined : 'Install ran but server still not detected; check PATH',
+        command: argv.join(' '),
+      }
+    } catch (error) {
+      return { ok: false, message: `Install error: ${error instanceof Error ? error.message : String(error)}`, command: argv.join(' ') }
     }
   }
 }

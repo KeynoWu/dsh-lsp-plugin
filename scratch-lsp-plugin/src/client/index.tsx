@@ -74,10 +74,18 @@ export interface LspStatusDescribe {
   idleTimeoutMs: number
 }
 
-// client 端 remote 类型增强：`ctx.remote.lspStatus.describe()`
+// client 端 remote 类型增强：`ctx.remote.lspStatus.describe() / install(id)`
 declare module '@deepseek-ai/dsh-typert-protocol' {
   interface TypertRemoteNamespaceMap {
-    lspStatus: { describe(): Promise<LspStatusDescribe> }
+    lspStatus: {
+      describe(): Promise<LspStatusDescribe>
+      install(languageId: string): Promise<{
+        ok: boolean
+        status?: { found: boolean; version?: string; reason?: string }
+        message?: string
+        command?: string
+      }>
+    }
   }
 }
 
@@ -96,11 +104,20 @@ interface SectionProps {
   setEnabled: (next: Record<string, boolean>) => void
   setIdle: (ms: number) => void
   loadStatus: () => Promise<LspStatusDescribe>
+  installLang: (id: string) => Promise<{ ok: boolean; message?: string }>
 }
 
-function LspSettingsSection({ t, useScope, setEnabled, setIdle, loadStatus }: SectionProps) {
+function LspSettingsSection({ t, useScope, setEnabled, setIdle, loadStatus, installLang }: SectionProps) {
   const [status, setStatus] = useState<LspStatusDescribe | undefined>(undefined)
   const [loadFailed, setLoadFailed] = useState(false)
+  const [installingId, setInstallingId] = useState<string | undefined>(undefined)
+  const [installError, setInstallError] = useState<string | undefined>(undefined)
+
+  const refresh = () => {
+    loadStatus()
+      .then((s) => { setStatus(s); setLoadFailed(false) })
+      .catch(() => setLoadFailed(true))
+  }
 
   useEffect(() => {
     let alive = true
@@ -109,6 +126,20 @@ function LspSettingsSection({ t, useScope, setEnabled, setIdle, loadStatus }: Se
       .catch(() => { if (alive) setLoadFailed(true) })
     return () => { alive = false }
   }, [loadStatus])
+
+  const onInstall = async (id: string) => {
+    setInstallingId(id)
+    setInstallError(undefined)
+    try {
+      const res = await installLang(id)
+      if (!res.ok) setInstallError(`${id}: ${res.message ?? 'install failed'}`)
+      refresh()
+    } catch (e) {
+      setInstallError(`${id}: ${e instanceof Error ? e.message : String(e)}`)
+    } finally {
+      setInstallingId(undefined)
+    }
+  }
 
   // settings 快照（slots 系统注入的 selector hook）
   const scopeSnap = useScope((s) => s)
@@ -189,6 +220,23 @@ function LspSettingsSection({ t, useScope, setEnabled, setIdle, loadStatus }: Se
                 <span style={{ fontSize: 11, color: badge.color, minWidth: 56, textAlign: 'right' }}>
                   {badge.text}
                 </span>
+                {st && !st.found && (
+                  <button
+                    type="button"
+                    disabled={installingId !== undefined}
+                    onClick={(e) => { e.preventDefault(); void onInstall(lang.id) }}
+                    style={{
+                      fontSize: 11,
+                      padding: '2px 8px',
+                      cursor: installingId === lang.id ? 'wait' : 'pointer',
+                      background: 'var(--dsw-alias-bg-module-platform, #f0f0f0)',
+                      border: '1px solid var(--dsw-alias-border-l2, #ddd)',
+                      borderRadius: 4,
+                    }}
+                  >
+                    {installingId === lang.id ? '…' : '安装'}
+                  </button>
+                )}
                 <span
                   style={{
                     fontSize: 11,
@@ -204,6 +252,11 @@ function LspSettingsSection({ t, useScope, setEnabled, setIdle, loadStatus }: Se
           })}
         </div>
       ))}
+      {installError && (
+        <p style={{ margin: 0, fontSize: 12, color: 'var(--dsw-alias-label-error, #dc2626)' }}>
+          {installError}
+        </p>
+      )}
     </div>
   )
 }
@@ -224,6 +277,14 @@ export function apply(ctx: Context) {
       invocation: { kind: 'direct' },
       parameters: [],
       result: { mode: 'src-json' },
+    }, {
+      id: 'lspStatus.install',
+      service: 'lspStatus',
+      namespace: 'lspStatus',
+      method: 'install',
+      invocation: { kind: 'direct' },
+      parameters: [{ name: 'languageId', wire: 'languageId', source: 'json', codec: { mode: 'src-json' } }],
+      result: { mode: 'src-json' },
     }],
   }).catch(() => { /* remote 未就绪时设置页降级为仅勾选 */ })
 
@@ -240,6 +301,7 @@ export function apply(ctx: Context) {
       setEnabled: (next: Record<string, boolean>) => void scope.set('enabled', next),
       setIdle: (ms: number) => void scope.set('idleTimeoutMs', ms),
       loadStatus: () => ctx.remote.lspStatus.describe(),
+      installLang: (id: string) => ctx.remote.lspStatus.install(id),
     }),
   }, LspSettingsSection))
 }
