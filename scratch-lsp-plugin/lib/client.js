@@ -65,6 +65,24 @@ window.__ModuleLoader__.load({
     };
     var dictionaries = { zh, en };
     var NS = "lsp";
+    var FALLBACK_LANGUAGES = [
+      { id: "typescript", displayName: "TypeScript/JavaScript", group: "\u524D\u7AEF", priority: "P0" },
+      { id: "vue", displayName: "Vue", group: "\u524D\u7AEF", priority: "P1" },
+      { id: "html", displayName: "HTML", group: "\u524D\u7AEF", priority: "P2" },
+      { id: "css", displayName: "CSS/SCSS", group: "\u524D\u7AEF", priority: "P2" },
+      { id: "python", displayName: "Python", group: "\u540E\u7AEF", priority: "P0" },
+      { id: "go", displayName: "Go", group: "\u540E\u7AEF", priority: "P1" },
+      { id: "rust", displayName: "Rust", group: "\u540E\u7AEF", priority: "P1", heavy: true },
+      { id: "java", displayName: "Java", group: "\u540E\u7AEF", priority: "P2", heavy: true },
+      { id: "csharp", displayName: "C#", group: "\u540E\u7AEF", priority: "P2", heavy: true },
+      { id: "php", displayName: "PHP", group: "\u540E\u7AEF", priority: "P2" },
+      { id: "ruby", displayName: "Ruby", group: "\u540E\u7AEF", priority: "P2" },
+      { id: "cpp", displayName: "C/C++", group: "\u540E\u7AEF", priority: "P2" },
+      { id: "kotlin", displayName: "Kotlin", group: "Android", priority: "P2" },
+      { id: "swift", displayName: "Swift", group: "iOS", priority: "P1", heavy: true },
+      { id: "sql", displayName: "SQL", group: "\u6570\u636E", priority: "P3", experimental: true },
+      { id: "r", displayName: "R", group: "\u6570\u636E", priority: "P3", experimental: true }
+    ];
     function LspSettingsSection({ t, useScope, setEnabled, setIdle, loadStatus, installLang }) {
       const [status, setStatus] = (0, import_react.useState)(void 0);
       const [loadFailed, setLoadFailed] = (0, import_react.useState)(false);
@@ -107,7 +125,7 @@ window.__ModuleLoader__.load({
       const value = scopeSnap.value ?? {};
       const enabled = value.enabled ?? {};
       const idleMs = value.idleTimeoutMs ?? 3e5;
-      const languages = status?.languages ?? [];
+      const languages = status?.languages?.length ? status.languages : FALLBACK_LANGUAGES;
       const statuses = status?.statuses ?? {};
       const groups = [...new Set(languages.map((l) => l.group))];
       const toggle = (id, next) => {
@@ -242,8 +260,15 @@ window.__ModuleLoader__.load({
           },
           setEnabled: (next) => void scope.set("enabled", next),
           setIdle: (ms) => void scope.set("idleTimeoutMs", ms),
-          loadStatus: () => ctx.remote.lspStatus.describe(),
-          installLang: (id) => ctx.remote.lspStatus.install(id)
+          // 防御：$mount 异步完成前 remote.lspStatus 可能未挂载——避免同步 TypeError（会让组件崩溃白屏）
+          loadStatus: () => {
+            const svc = ctx.remote.lspStatus;
+            return svc ? svc.describe() : Promise.reject(new Error("LSP status remote not ready yet"));
+          },
+          installLang: (id) => {
+            const svc = ctx.remote.lspStatus;
+            return svc ? svc.install(id) : Promise.reject(new Error("LSP status remote not ready yet"));
+          }
         })
       }, LspSettingsSection));
     }

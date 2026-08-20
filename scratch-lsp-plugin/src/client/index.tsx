@@ -59,6 +59,29 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 
 const NS = 'lsp'
 
+/**
+ * fallback 语言列表：仅当 host remote（lspStatus.describe）不可用时使用，
+ * 保证设置页永不空白（正常时以 host 下发的目录为准，本表不参与）。
+ */
+const FALLBACK_LANGUAGES: LspStatusDescribe['languages'] = [
+  { id: 'typescript', displayName: 'TypeScript/JavaScript', group: '前端', priority: 'P0' },
+  { id: 'vue', displayName: 'Vue', group: '前端', priority: 'P1' },
+  { id: 'html', displayName: 'HTML', group: '前端', priority: 'P2' },
+  { id: 'css', displayName: 'CSS/SCSS', group: '前端', priority: 'P2' },
+  { id: 'python', displayName: 'Python', group: '后端', priority: 'P0' },
+  { id: 'go', displayName: 'Go', group: '后端', priority: 'P1' },
+  { id: 'rust', displayName: 'Rust', group: '后端', priority: 'P1', heavy: true },
+  { id: 'java', displayName: 'Java', group: '后端', priority: 'P2', heavy: true },
+  { id: 'csharp', displayName: 'C#', group: '后端', priority: 'P2', heavy: true },
+  { id: 'php', displayName: 'PHP', group: '后端', priority: 'P2' },
+  { id: 'ruby', displayName: 'Ruby', group: '后端', priority: 'P2' },
+  { id: 'cpp', displayName: 'C/C++', group: '后端', priority: 'P2' },
+  { id: 'kotlin', displayName: 'Kotlin', group: 'Android', priority: 'P2' },
+  { id: 'swift', displayName: 'Swift', group: 'iOS', priority: 'P1', heavy: true },
+  { id: 'sql', displayName: 'SQL', group: '数据', priority: 'P3', experimental: true },
+  { id: 'r', displayName: 'R', group: '数据', priority: 'P3', experimental: true },
+]
+
 /** host remote 返回的状态结构（与 src/status.ts 的 LspStatusDescribe 对齐） */
 export interface LspStatusDescribe {
   languages: Array<{
@@ -147,7 +170,8 @@ function LspSettingsSection({ t, useScope, setEnabled, setIdle, loadStatus, inst
   const enabled = value.enabled ?? {}
   const idleMs = value.idleTimeoutMs ?? 300000
 
-  const languages = status?.languages ?? []
+  // remote 失败/未就绪时退回内置列表（仅显示勾选，无状态徽标）——设置页永不空白
+  const languages = status?.languages?.length ? status.languages : FALLBACK_LANGUAGES
   const statuses = status?.statuses ?? {}
   const groups = [...new Set(languages.map((l) => l.group))]
 
@@ -300,8 +324,15 @@ export function apply(ctx: Context) {
       },
       setEnabled: (next: Record<string, boolean>) => void scope.set('enabled', next),
       setIdle: (ms: number) => void scope.set('idleTimeoutMs', ms),
-      loadStatus: () => ctx.remote.lspStatus.describe(),
-      installLang: (id: string) => ctx.remote.lspStatus.install(id),
+      // 防御：$mount 异步完成前 remote.lspStatus 可能未挂载——避免同步 TypeError（会让组件崩溃白屏）
+      loadStatus: () => {
+        const svc = ctx.remote.lspStatus
+        return svc ? svc.describe() : Promise.reject(new Error('LSP status remote not ready yet'))
+      },
+      installLang: (id: string) => {
+        const svc = ctx.remote.lspStatus
+        return svc ? svc.install(id) : Promise.reject(new Error('LSP status remote not ready yet'))
+      },
     }),
   }, LspSettingsSection))
 }
