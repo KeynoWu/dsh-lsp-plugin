@@ -13,3 +13,4 @@ m2b-crash-check.mjs
 m3-settings-check.mjs
 m4-status-check.mjs
 m4-rename-check.mjs
+m4-install-check.mjs
