@@ -1,3 +1,5 @@
+// 本脚本为开发期本机验证工具：依赖本地 DSH 安装（@deepseek-ai/* 包）。
+// 若你的 DSH 安装路径不同，请替换下方绝对路径。
 const cordisCtx = (await import('/Users/wuminxuan/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js')).Context
 const { LocalSubprocessRuntime } = await import('/Users/wuminxuan/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-subprocess-local/lib/index.js')
 const { LspPool } = await import('./scratch-lsp-plugin/src/client.ts')

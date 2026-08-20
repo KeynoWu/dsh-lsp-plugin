@@ -228,13 +228,13 @@ lsp:
 
 | 项 | 值 |
 |---|---|
-| DSH CLI/bin 包 | `/Users/wuminxuan/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/`（`@deepseek-ai/dsh` 0.1.0-rc.7，`dsh` 命令） |
+| DSH CLI/bin 包 | `$HOME/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/`（`@deepseek-ai/dsh` 0.1.0-rc.7，`dsh` 命令） |
 | DSH 子包（194 个，rc.8） | 同目录下 `node_modules/@deepseek-ai/`（如 `dsh-llm-pi-ai`、`dsh-tool-fs-search`、`dsh-client-ui-settings-plugins`…） |
-| 用户 DSH home | `~/.dsh`（`DSH_HOME=/Users/wuminxuan/.dsh`） |
+| 用户 DSH home | `~/.dsh`（`DSH_HOME=~/.dsh`） |
 | 用户配置 | `~/.dsh/settings.yaml`（settings seam 用户层；`dsh-settings-file` 用 chokidar **watch 外部编辑**，改完即生效，无需重启） |
 | 当前 profile | `~/.dsh/profiles/web`（Web GUI：bundles = `@deepseek-ai/dsh-base` + `@deepseek-ai/dsh-web-app`；`package.json` 的 `dsh.profile.bundles`；`cordis.yml` 为空 entry 列表；`cordis.patch.yml` 为用户的 patch 层——开发插件从这里挂载） |
 | Web GUI | http://127.0.0.1:3080（node 进程监听） |
-| 文件沙箱 | 当前会话为 workspace-write（仅工作区 `/Users/wuminxuan/Desktop/test/dsh-plugin` 可写）；写 `~/.dsh` 等外部路径需升级权限（danger-full-access + 用户批准） |
+| 文件沙箱 | 当前会话为 workspace-write（仅工作区 `<workspace>/dsh-plugin` 可写）；写 `~/.dsh` 等外部路径需升级权限（danger-full-access + 用户批准） |
 | 插件安装命令 | `dsh plugin --profile <name> <pnpm args>`（在 profile 目录转发 pnpm，把插件装进 profile 的 `node_modules`） |
 
 ### 11.2 参考代码定位
@@ -247,7 +247,7 @@ lsp:
   - `edits.ts`（WorkspaceEdit 应用）、`utils.ts`（URI 转换/符号列解析/格式化）、`types.ts`（schema 与协议类型）
   - `lspmux.ts` + `mux/`（多路复用守护进程——**DSH 版不做**，仅参考）
   - 文档：`docs/lsp-config.md`、`docs/tools/lsp.md`
-- **DSH 范式包**（本地路径 `/Users/wuminxuan/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/`）：
+- **DSH 范式包**（本地路径 `$HOME/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/`）：
   - `dsh-client-ui-settings-plugins`：**双面插件范本**——`lib/index.js` 为 host 端（空 `apply`，让插件出现在 loader）、`lib/client.js` 为浏览器端、`package.json` 用 `dsh.client.inject` 声明注入（`dsh-client-connection`、`dsh-client-locale`、`dsh-client-runtime`、`dsh-client-ui-settings`、`dsh-api-remotes`）
   - `dsh-tool-fs-search`：**host 工具范本**——`defineTool` + `ctx.subprocess` spawn 外部二进制（ripgrep）+ schemastery `Config`；`lib/index.js` 是唯一入口
   - `dsh-llm-pi-ai`：**settings section 范本**——`installSettingsSection(ctx, NS, Config, config, { validate, setSource, onChange })`、schemastery schema、`assertServiceable` 校验、credentials seam

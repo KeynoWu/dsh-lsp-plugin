@@ -1,3 +1,5 @@
+// 本脚本为开发期本机验证工具：依赖本地 DSH 安装（@deepseek-ai/* 包）。
+// 若你的 DSH 安装路径不同，请替换下方绝对路径。
 // M1 无 GUI 验证：加载插件 → 注册工具 → 执行 lsp_definition → 验证返回正确定义位置
 // 用真实 cordis Context + 真实 LocalSubprocessRuntime（provide 为 ctx.subprocess），
 // ctx.tools 用 mock 捕获注册的工具定义，然后直接调 execute。

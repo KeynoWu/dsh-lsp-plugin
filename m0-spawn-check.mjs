@@ -1,3 +1,5 @@
+// 本脚本为开发期本机验证工具：依赖本地 DSH 安装（@deepseek-ai/* 包）。
+// 若你的 DSH 安装路径不同，请替换下方绝对路径。
 // M0 验证：ctx.subprocess seam 能否承载 LSP 双向长驻进程
 // 用真实的 LocalSubprocessRuntime spawn typescript-language-server，
 // 完成 initialize → initialized → didOpen → definition → shutdown 全链路。
